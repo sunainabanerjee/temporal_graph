@@ -4,9 +4,11 @@ Basic utility for graph representation
 
 import numpy as np
 import pandas as pd
+from copy import deepcopy
+from temporal_graph.spatial_ds import *
 
 __version__ = "1.0"
-__all__ = ['SimpleGraph', 'WeightedGraph']
+__all__ = ['SimpleGraph', 'WeightedGraph', 'GeometricGraph3d']
 
 
 class SimpleGraph(object):
@@ -197,8 +199,10 @@ class WeightedGraph:
             self.__vattrib_lookup[v] = attribute
 
     def add_edge(self, src, dst, weight=None):
-        self.add_vertex(src)
-        self.add_vertex(dst)
+        if not self.is_vertex(src):
+            self.add_vertex(src)
+        if not self.is_vertex(dst):
+            self.add_vertex(dst)
         self.__G.add_edge(src, dst)
         e_id = self.__G.edge_id(src, dst)
         if (e_id not in self.__eweight_lookup) or (weight is not None):
@@ -269,14 +273,26 @@ class WeightedGraph:
     def in_degree(self, v):
         return self.__G.in_degree(v)
 
-    def in_neighbors(self, v):
-        return self.__G.in_neighbors(v)
+    def in_neighbors(self, v, weight_sorted=True):
+        nbrs = self.__G.in_neighbors(v)
+        if weight_sorted:
+            weights = []
+            for u in nbrs:
+                weights.append((u, self.weight(u, v)))
+            nbrs=[u for u, w in sorted(weights, key=lambda x: x[1], reverse=True)]
+        return nbrs
 
     def out_degree(self, v):
         return self.__G.out_degree(v)
 
-    def out_neighbors(self, v):
-        return self.__G.out_neigbors(v)
+    def out_neighbors(self, v, weigth_sorted=True):
+        nbrs = self.__G.out_neigbors(v)
+        if weigth_sorted:
+            weights = []
+            for u in nbrs:
+                weights.append((u, self.weight(v, u)))
+            nbrs=[u for u, w in sorted(weights, key=lambda x: x[1], reverse=True)]
+        return nbrs
 
     def is_vertex(self, v):
         return self.__G.is_vertex(v)
@@ -293,5 +309,23 @@ class WeightedGraph:
     @property
     def adjacency(self):
         return self.__G.adjacency
+
+
+class GeometricGraph3d(WeightedGraph):
+    def __init__(self, directed=False, def_weight=1.0):
+        WeightedGraph.__init__(self, directed=False, def_weight=def_weight)
+
+    def add_vertex(self, v, attribute):
+        assert isinstance(attribute, Coordinate3d)
+        super().add_vertex(v, attribute=attribute)
+
+    def add_edge(self, src, dst, weight=None):
+        assert self.is_vertex(src)
+        assert self.is_vertex(dst)
+        super().add_edge(src=src, dst=dst, weight=weight)
+
+
+
+
 
 
